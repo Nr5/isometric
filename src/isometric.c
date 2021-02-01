@@ -26,13 +26,30 @@ uint8_t worldmap[256*256];
 uint8_t worldmap2[256*256];
 
 typedef struct game_object {
+	float x;
+	float y;
+	uint8_t id;
+
+} game_object;
+typedef struct rect {
 	float x1;
 	float y1;
 	float x2;
 	float y2;
-	uint16_t image;
 
-} game_object;
+} rect;
+#define tex_width 440
+#define tex_height 102
+rect trees_texture_coords[] = {
+		(rect) { .x1 =   0.f/tex_width, .y1 = 0, .x2 =  40.f/tex_width , .y2 = 1},
+		(rect) { .x1 =  40.f/tex_width, .y1 = 0, .x2 = 103.f/tex_width , .y2 = 1},
+		(rect) { .x1 = 103.f/tex_width, .y1 = 0, .x2 = 183.f/tex_width , .y2 = 1},
+		(rect) { .x1 = 183.f/tex_width, .y1 = 0, .x2 = 247.f/tex_width , .y2 = 1},
+		(rect) { .x1 = 247.f/tex_width, .y1 = 0, .x2 = 325.f/tex_width , .y2 = 1},
+		(rect) { .x1 = 325.f/tex_width, .y1 = 0, .x2 = 400.f/tex_width , .y2 = 1},
+		(rect) { .x1 = 400.f/tex_width, .y1 = 30.f/tex_height, .x2 = 440.f/tex_width , .y2 = 55.f/tex_height},
+		(rect) { .x1 = 400.f/tex_width, .y1 = 55.f/tex_height, .x2 = 440.f/tex_width , .y2 = 1},
+};
 
 game_object game_object_array[256*256];
 game_object* end_game_object = game_object_array;
@@ -156,30 +173,24 @@ void draw(){
 		float yshift = (global_position[1]/subtile -map_position[1]) ;
 		
 		float xshift2 =- (20.f/80) * ( yshift - xshift )/ ((float)screen_width / 200.f ) ;
-		float yshift2 =1- (10.f/60) * ( yshift + xshift )/ ((float)screen_height / 150.f ) ;
+		//i don't know what 1.87 below  means
+		float yshift2 =2.03- (10.f/60) * ( yshift + xshift )/ ((float)screen_height / 150.f ) ;
 		for (game_object* go = game_object_array; go < end_game_object; go++){
-
+			float width = trees_texture_coords[go->id].x2 - trees_texture_coords[go->id].x1;
+			float height = trees_texture_coords[go->id].y2 - trees_texture_coords[go->id].y1;
 			glColor4f(1,1,1,1);
 			
-			glTexCoord2f(0,1);
-			glVertex2f(go->x1
-							- xshift2
-							,go->y1 - yshift2);
+			glTexCoord2f(trees_texture_coords[go->id].x1,trees_texture_coords[go->id].y2);
+			glVertex2f(go->x - width /4 - xshift2, go->y - yshift2);
 			
-			glTexCoord2f(1,1);
-			glVertex2f(go->x2
-							- xshift2
-							,go->y1- yshift2);
+			glTexCoord2f(trees_texture_coords[go->id].x2,trees_texture_coords[go->id].y2);
+			glVertex2f(go->x + width /4 - xshift2, go->y - yshift2);
 			
-			glTexCoord2f(1,0);
-			glVertex2f(go->x2
-							- xshift2
-							,go->y2 - yshift2);
+			glTexCoord2f(trees_texture_coords[go->id].x2,trees_texture_coords[go->id].y1);
+			glVertex2f(go->x + width /4 - xshift2, go->y + height/4- yshift2);
 			
-			glTexCoord2f(0,0);
-			glVertex2f(go->x1
-							- xshift2
-							,go->y2- yshift2);
+			glTexCoord2f(trees_texture_coords[go->id].x1,trees_texture_coords[go->id].y1);
+			glVertex2f(go->x - width /4 - xshift2, go->y + height/4 - yshift2);
 		}
 	glEnd();
 	glDisable(GL_BLEND);	
@@ -213,10 +224,11 @@ void loadmap(){
 	end_game_object = game_object_array;
 	for (int y = 0; y < 256; y++){
 			for (int x = 0; x < 256; x++){
-				if (worldmap2[x + y* 256] > 0xa0 && worldmap[x+y*256] > 3){
+				if (worldmap2[x + y* 256] ){
 					float x2 =- (20.f/80 ) * ( y - x) / ((float)screen_width / 200.f ) ;
 					float y2 =- (10.f/60 ) * ( y + x) / ((float)screen_height / 150.f ) ;
-					*end_game_object = (game_object)	 {.x1 = x2 - .05, .y1 = y2 - .2, .x2 = x2 + .05, .y2 = y2};
+					
+					*end_game_object = (game_object)	 {.x = x2 , .y = y2, .id = worldmap2[x + y * 256] - 1 };
 					end_game_object++;
 				}
 			}
@@ -300,7 +312,7 @@ int main(int argc, char** argv){
 	global_position[0] += 0x700100A;	
 	
   	SDL_Surface* img=SDL_LoadBMP("../res/texmap2.bmp");
-  	SDL_Surface* tree_img=SDL_LoadBMP("../res/tree2.bmp");
+  	SDL_Surface* tree_img=SDL_LoadBMP("../res/trees.bmp");
 	
 	glActiveTexture(GL_TEXTURE2);
 	glGenTextures(1,&tree_texture);
@@ -562,30 +574,40 @@ int main(int argc, char** argv){
 		uint32_t dy = target[1] - player.pos_y;
 		int distance = sqrt( dx * dx + dy * dy );
 	
-			if (distance >2){
-				int new_x = player.pos_x+( (target[0] - player.pos_x) /(distance/16))  ;
-				int new_y = player.pos_y+( (target[1] - player.pos_y) /(distance/16))  ;
-				if ( 
-					(int)(worldmap[(int) ((new_y / subtile)     - map_position[1]) * 256 +((int) player.pos_x / subtile) - map_position[0]] !=0  ) 	&&
-					(int)(worldmap[(int) ((new_y / subtile + !!(new_y % subtile) ) - map_position[1]) * 256 +((int) player.pos_x / subtile) - map_position[0]] !=0  ) 	&&
-					(int)(worldmap[(int) ((new_y / subtile + !!(new_y % subtile) ) - map_position[1]) * 256 +(int) ((player.pos_x / subtile) - map_position[0] + !!(player.pos_x % subtile)) ] !=0  ) &&
-					(int)(worldmap[(int) ((new_y / subtile)     - map_position[1]) * 256 +  (int) ((player.pos_x / subtile) - map_position[0] + !!(player.pos_x % subtile)) ] !=0  )
-				   ){
-					player.pos_y=new_y;
-				}
-				if ( 
-					(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1])     * 256 +(int) (new_x / subtile) - map_position[0]] !=0  ) 	&&
-					(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1] +  !!(player.pos_y % subtile) ) * 256 +(int) (new_x / subtile) - map_position[0]] !=0  ) 	&&
-					(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1] +  !!(player.pos_y % subtile) ) * 256 +(int) (new_x / subtile - map_position[0] +  !!(new_x % subtile) ) ] !=0  ) &&
-					(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1] )    * 256 +(int) (new_x / subtile - map_position[0] +  !!(new_x % subtile) ) ] !=0  )
-					){	
-					player.pos_x=new_x;
-				}
-			
-			}else{
-				player.pos_x=target[0];
-				player.pos_y=target[1];
+		if (distance >2){
+			int new_x = player.pos_x+( (target[0] - player.pos_x) /(distance/16))  ;
+			int new_y = player.pos_y+( (target[1] - player.pos_y) /(distance/16))  ;
+			if ( 
+				(int)(worldmap[(int) ((new_y / subtile) - map_position[1]) * 256 +((int) player.pos_x / subtile) - map_position[0]] ) 	&&
+				(int)(worldmap[(int) ((new_y / subtile + !!(new_y % subtile) ) - map_position[1]) * 256 +((int) player.pos_x / subtile) - map_position[0]] ) 	&&
+				(int)(worldmap[(int) ((new_y / subtile + !!(new_y % subtile) ) - map_position[1]) * 256 +(int) ((player.pos_x / subtile) - map_position[0] + !!(player.pos_x % subtile)) ] ) &&
+				(int)(worldmap[(int) ((new_y / subtile)     - map_position[1]) * 256 +  (int) ((player.pos_x / subtile) - map_position[0] + !!(player.pos_x % subtile)) ] )	&&
+				
+				!(int)(worldmap2[(int) ((new_y / subtile) - map_position[1]) * 256 +((int) player.pos_x / subtile) - map_position[0]]  ) 	&&
+				!(int)(worldmap2[(int) ((new_y / subtile + !!(new_y % subtile) ) - map_position[1]) * 256 +((int) player.pos_x / subtile) - map_position[0]] ) 	&&
+				!(int)(worldmap2[(int) ((new_y / subtile + !!(new_y % subtile) ) - map_position[1]) * 256 +(int) ((player.pos_x / subtile) - map_position[0] + !!(player.pos_x % subtile)) ] ) &&
+				!(int)(worldmap2[(int) ((new_y / subtile)     - map_position[1]) * 256 +  (int) ((player.pos_x / subtile) - map_position[0] + !!(player.pos_x % subtile)) ] )
+			   ){
+				player.pos_y=new_y;
 			}
+			if ( 
+				(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1])     * 256 +(int) (new_x / subtile) - map_position[0]] ) 	&&
+				(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1] +  !!(player.pos_y % subtile) ) * 256 +(int) (new_x / subtile) - map_position[0]] ) 	&&
+				(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1] +  !!(player.pos_y % subtile) ) * 256 +(int) (new_x / subtile - map_position[0] +  !!(new_x % subtile) ) ]  ) &&
+				(int)(worldmap[(int) ((player.pos_y / subtile) - map_position[1] )    * 256 +(int) (new_x / subtile - map_position[0] +  !!(new_x % subtile) ) ]  )
+			&&	
+				!(int)(worldmap2[(int) ((player.pos_y / subtile) - map_position[1])     * 256 +(int) (new_x / subtile) - map_position[0]]  ) 	&&
+				!(int)(worldmap2[(int) ((player.pos_y / subtile) - map_position[1] +  !!(player.pos_y % subtile) ) * 256 +(int) (new_x / subtile) - map_position[0]]  ) 	&&
+				!(int)(worldmap2[(int) ((player.pos_y / subtile) - map_position[1] +  !!(player.pos_y % subtile) ) * 256 +(int) (new_x / subtile - map_position[0] +  !!(new_x % subtile) ) ]) &&
+				!(int)(worldmap2[(int) ((player.pos_y / subtile) - map_position[1] )    * 256 +(int) (new_x / subtile - map_position[0] +  !!(new_x % subtile) ) ]  )
+				){	
+				player.pos_x=new_x;
+			}
+		
+		}else{
+			player.pos_x=target[0];
+			player.pos_y=target[1];
+		}
 //			global_position[0] = (player.pos_x ) +50 * subtile;
 //			global_position[1] = (player.pos_y ) +50 * subtile;
 		}

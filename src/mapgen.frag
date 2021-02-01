@@ -36,15 +36,44 @@ float noise(vec2 x) {
 }
 
 
-
+int n_trees=8;
 void main(){
 	//gl_Position=vec4(position,-.999,0,1);
-	float tc2= -1 + noise(vec2(gl_FragCoord.xy + map_position.xy /*% uvec2(0x10000)*/ )  *.01f )*3;
-	tc2     += noise(vec2(gl_FragCoord.xy + map_position.xy /*% uvec2(0x10000)*/ )  * .1f )*1;
-	tc2      = min(2.5,tc2);
+	float tc2= -1 + noise(vec2(gl_FragCoord.xy + map_position.xy /*% uvec2(0x10000)*/ )  *.01f )*5;
+ 	float tc3 = 0;
+	tc2     += noise(vec2(gl_FragCoord.xy + map_position.xy /*% uvec2(0x10000)*/ )  * .1f )*2;
+	
+	float tc4 = noise(vec2(gl_FragCoord.xy + map_position.xy /*% uvec2(0x10000)*/ )  *.08 ) * 2	;
+	tc4 += noise(vec2(gl_FragCoord.xy + map_position.xy /*% uvec2(0x10000)*/ )  *.05 ) * 2	;
+	if ( tc2 > 2 ) tc3 =  noise( vec2( gl_FragCoord.xy + map_position.xy)) * .5 / tc2 ;
+	if (tc3 >= n_trees/255.f ) tc3 = 0;
+	if (tc4 < .67 && tc2 > 2) {
+			float prevtc2 = tc2;
+			if (tc4 < .6)	{
+					tc2 = tc4; 
+					tc3 = 0;
+			}
+			if (tc4 > .58 ) {
+					if (int (tc2 * tc4 * tc2)%2 != 0) {
+							tc3 = 8.f/255; // if at side of lake change to seagrass;
+					}
+					else if (prevtc2 < 3 && int (tc4 * tc4 * tc2 * 8)% 2 != 0 )tc2 = 1;
+					else if (tc2 == 2.5) tc2 = 2;
+					
+			}
+	}
+	
+
+//	if (gl_FragCoord.x + map_position.x < 297025) tc3 = 1.f/255;
+//	if (gl_FragCoord.y + map_position.y < 297025) tc3 = 1.f/255;
+
+	tc2      = min(4.5,tc2);
 	tc2      = tc2 * 2.f / 256;
 	//if (tc2 > 6.f/256)tc2 = 6.f/256;
- 	gl_FragColor = vec4(tc2,noise(vec2(gl_FragCoord.xy + map_position.xy)),0,0 );
+
+	gl_FragColor = vec4(tc2,
+					tc3
+					,0,0 );
 	
 /*
 	if (gl_FragCoord.x < 4 ){
