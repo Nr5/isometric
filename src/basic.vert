@@ -18,14 +18,18 @@ void main(){
 	float x = -(gl_InstanceID % (width ) + 1.f*map_position.x -1.f*(global_position.x/ subtile) );
 	float y = -(gl_InstanceID / (width ) + 1.f*map_position.y -1.f*(global_position.y/ subtile) ); 
 	
-	int biome[7];
+	int biome[10];
 	biome[0] = 9;
 	biome[1] = 0;
 	biome[2] = 1;
 	biome[3] = 11;
 	biome[4] = 3;
 	biome[5] = 10;
-	biome[6] = 11;
+	biome[6] = 3;
+	biome[7] = 2;
+	biome[8] = 6;
+	biome[9] = 2;
+							
 
 
 	//int width=10;
